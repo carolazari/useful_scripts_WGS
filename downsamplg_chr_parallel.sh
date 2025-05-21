@@ -75,7 +75,7 @@ DECIMAL=$(printf "%.3f" $FRACTION | cut -d'.' -f2)
 readarray -t CHROMOSOMES < <(samtools idxstats aligned.bam | cut -f1 | grep -v '\*')
 
 declare -p CHROMOSOMES
-
+DIR='test/'
 #=== OLD ===
 
 #for[ c in $CHROMOSOMES ]; do

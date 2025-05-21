@@ -75,11 +75,11 @@ fi
 echo "[INFO] "$OUT_BAM" is valid."
 
 # === STEP 4: MERGE ALL CHUNK BAM FILES ===
-echo "[INFO] Merging all chunk BAMs..."
-samtools merge -@ $THREADS "$MERGED_BAM" "$BAM_DIR"/chunk_*.bam
-samtools index "$MERGED_BAM"
+#echo "[INFO] Merging all chunk BAMs..."
+#samtools merge -@ $THREADS "$MERGED_BAM" "$BAM_DIR"/chunk_*.bam
+#samtools index "$MERGED_BAM"
 
-# === STEP 5: CALCULATE COVERAGE AND DOWNSAMPLE ===
+# === STEP 4: CALCULATE COVERAGE AND DOWNSAMPLE ===
 echo "[INFO] Calculating coverage and sampling fraction..."
 
 TOTAL_READS=$(samtools view -c "$MERGED_BAM")
@@ -94,31 +94,53 @@ echo "  Estimated depth: $CURRENT_DEPTH"
 echo "  Target depth: $TARGET_DEPTH"
 echo "  Downsampling fraction: $FRACTION"
 
-echo "[INFO] Downsampling BAM..."
-samtools view -@ $THREADS -f 3 -s 42."$DECIMAL" -b "$MERGED_BAM" > downsampled.bam
-samtools sort -@ $THREADS -o downsampled.sorted.bam downsampled.bam
-samtools index downsampled.sorted.bam
+
+# === STEP 5: DOWNSAMPLE BAMS ===
+#echo "[INFO] Downsampling BAM..."
+#samtools view -@ $THREADS -f 3 -s 42."$DECIMAL" -b "$MERGED_BAM" > downsampled.bam
+#samtools sort -@ $THREADS -o downsampled.sorted.bam downsampled.bam
+#samtools index downsampled.sorted.bam
 
 # === STEP 6: PER-CHROMOSOME PROCESSING ===
 
 # Get chromosome names into a Bash array
 echo "[INFO] Getting chromosome list..."
-readarray -t CHROMOSOMES < <(samtools idxstats downsampled.sorted.bam | cut -f1 | grep -v '\*')
+readarray -t CHROMOSOMES < <(samtools idxstats "$OUT_BAM" | cut -f1 | grep -v '\*')
 
 declare -p CHROMOSOMES
 
 CHROM_DIR="per_chrom_bams"
 mkdir -p "$CHROM_DIR" #-p avoids error if the directory already exists
 
+#for c in "${CHROMOSOMES[@]}"; do
+#    echo "[INFO] Processing chromosome $c"
+#    samtools view -b "$OUT_BAM" "$c" > "$CHROM_DIR/${c}.bam"
+#    samtools sort -@ $THREADS -o "$CHROM_DIR/${c}.sorted.bam" "$CHROM_DIR/${c}.bam"
+#    samtools index "$CHROM_DIR/${c}.sorted.bam"
+#done
+
+
+#===ADDED by CARO===
+
 for c in "${CHROMOSOMES[@]}"; do
-    echo "[INFO] Processing chromosome $c"
-    samtools view -b downsampled.sorted.bam "$c" > "$CHROM_DIR/${c}.bam"
-    samtools sort -@ $THREADS -o "$CHROM_DIR/${c}.sorted.bam" "$CHROM_DIR/${c}.bam"
-    samtools index "$CHROM_DIR/${c}.sorted.bam"
+    echo "Processing $c"
+    samtools view -b "$OUT_BAM" "$c" > "$CHROM_DIR/${c}.aligned.bam"
+    samtools view -@ 4 -f 3 -s 42."$DECIMAL" -b "$CHROM_DIR/${c}.aligned.bam" > "$CHROM_DIR/${c}.downsampled.bam"
+    samtools sort -@ 4 -o "$CHROM_DIR/${c}.downsampled.sorted.bam" "$CHROM_DIR/${c}.downsampled.bam"
+    samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
 done
 
+# === NEW STEP 4: MERGE ALL BAMS ===
+samtools merge SRR23782967_downsampled.sorted.bam $CHROM_DIR/*.downsampled.sorted.bam
+samtools index SRR23782967_downsampled.sorted.bam
+
+# === OUTPUT ===
+echo " Done! Output files:"
+echo " - SRR23782967_downsampled.sorted.bam"
+echo " - SRR23782967_downsampled.sorted.bam.bai"
+
 # === FINAL OUTPUT ===
-echo "Done!"
-echo " - Final downsampled BAM: downsampled.sorted.bam"
-echo " - Per-chromosome BAMs: $CHROM_DIR/*.sorted.bam"
+#echo "Done!"
+#echo " - Final downsampled BAM: downsampled.sorted.bam"
+#echo " - Per-chromosome BAMs: $CHROM_DIR/*.sorted.bam"
 
