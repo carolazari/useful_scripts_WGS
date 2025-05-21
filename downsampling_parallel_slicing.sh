@@ -82,7 +82,7 @@ echo "[INFO] "$OUT_BAM" is valid."
 # === STEP 4: CALCULATE COVERAGE AND DOWNSAMPLE ===
 echo "[INFO] Calculating coverage and sampling fraction..."
 
-TOTAL_READS=$(samtools view -c "$MERGED_BAM")
+TOTAL_READS=$(samtools view -c "$OUT_BAM")
 CURRENT_DEPTH=$(echo "$TOTAL_READS * $READ_LENGTH / $GENOME_SIZE" | bc -l)
 FRACTION=$(echo "$TARGET_DEPTH / $CURRENT_DEPTH" | bc -l)
 
