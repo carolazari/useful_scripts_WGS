@@ -32,8 +32,10 @@ THREADS=4
 # === WORKING DIRS ===
 CHUNK_DIR="fastq_chunks"
 BAM_DIR="bam_chunks"
-MERGED_BAM="aligned_merged.bam"
-mkdir -p "$CHUNK_DIR" "$BAM_DIR". #-p avoids error if the directory already exists
+CHROM_DIR="per_chrom_bams"
+MERGED_BAM="SRR23782967_downsampled.sorted.bam"
+
+mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" #-p avoids error if the directory already exists
 
 # === STEP 1: SLICE FASTQ FILES INTO CHUNKS ===
 echo "[INFO] Slicing FASTQ files into chunks of $CHUNK_SIZE read pairs..."
@@ -49,19 +51,18 @@ echo "[INFO] Indexing reference genome..."
 bwa index "$REF"
 samtools faidx "$REF"
 
-# === STEP 3: ALIGN EACH CHUNK AND OUTPUT BAM ===
+# === STEP 3: ALIGN, SORT, VERIFY, AND INDEX EACH CHUNK ===
 echo "[INFO] Aligning FASTQ chunks..."
 for i in "$CHUNK_DIR"/R1_chunk_*.fastq; do
     base=$(basename "$i" | sed 's/R1_chunk_//;s/.fastq//')
     R1_CHUNK="$CHUNK_DIR/R1_chunk_${base}.fastq"
     R2_CHUNK="$CHUNK_DIR/R2_chunk_${base}.fastq"
     OUT_BAM="$BAM_DIR/chunk_${base}.bam"
+    SORTED_BAM="$BAM_DIR/chunk_${base}.sorted.bam"
 
     echo "  Aligning chunk $base..."
     bwa mem -t $THREADS "$REF" "$R1_CHUNK" "$R2_CHUNK" | samtools view -b -o "$OUT_BAM" -
-done
 
-#=== STEP 3b:VERIFY BAM INTEGRITY ===
 echo "[INFO] Verifying BAM integrity..."
 if ! samtools quickcheck -v "$OUT_BAM"; then
     echo "[WARNING] BAM invalid, re-running alignment..."
@@ -73,6 +74,14 @@ if ! samtools quickcheck -v "$OUT_BAM"; then
     fi
 fi
 echo "[INFO] "$OUT_BAM" is valid."
+    
+    # Add sorting and indexing here:
+    echo "  Sorting and indexing chunk $base..."
+    samtools sort -@ $THREADS -o "$SORTED_BAM" "$OUT_BAM"
+    samtools index "$SORTED_BAM"
+done
+
+
 
 # === STEP 4: MERGE ALL CHUNK BAM FILES ===
 #echo "[INFO] Merging all chunk BAMs..."
@@ -112,13 +121,10 @@ declare -p CHROMOSOMES
 CHROM_DIR="per_chrom_bams"
 mkdir -p "$CHROM_DIR" #-p avoids error if the directory already exists
 
-#for c in "${CHROMOSOMES[@]}"; do
-#    echo "[INFO] Processing chromosome $c"
-#    samtools view -b "$OUT_BAM" "$c" > "$CHROM_DIR/${c}.bam"
-#    samtools sort -@ $THREADS -o "$CHROM_DIR/${c}.sorted.bam" "$CHROM_DIR/${c}.bam"
-#    samtools index "$CHROM_DIR/${c}.sorted.bam"
-#done
-
+if [ ${#CHROMOSOMES[@]} -eq 0 ]; then
+    echo "[ERROR] No chromosomes found. BAM might not be sorted or indexed correctly."
+    exit 1
+fi
 
 #===ADDED by CARO===
 
@@ -130,14 +136,25 @@ for c in "${CHROMOSOMES[@]}"; do
     samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
 done
 
+
+# === STEP 7: MERGE DOWNSAMPLED PER-CHROM BAMs ===
+echo "[INFO] Merging downsampled per-chromosome BAMs..."
+samtools merge -@ $THREADS "$MERGED_BAM" "$CHROM_DIR"/*.downsampled.sorted.bam
+samtools index "$MERGED_BAM"
+
+# === FINAL OUTPUT ===
+echo "[INFO] Pipeline complete. Output files:"
+echo " - $MERGED_BAM"
+echo " - ${MERGED_BAM}.bai"
+
 # === NEW STEP 4: MERGE ALL BAMS ===
-samtools merge SRR23782967_downsampled.sorted.bam $CHROM_DIR/*.downsampled.sorted.bam
-samtools index SRR23782967_downsampled.sorted.bam
+#samtools merge SRR23782967_downsampled.sorted.bam $CHROM_DIR/*.downsampled.sorted.bam
+#samtools index SRR23782967_downsampled.sorted.bam
 
 # === OUTPUT ===
-echo " Done! Output files:"
-echo " - SRR23782967_downsampled.sorted.bam"
-echo " - SRR23782967_downsampled.sorted.bam.bai"
+#echo " Done! Output files:"
+#echo " - SRR23782967_downsampled.sorted.bam"
+#echo " - SRR23782967_downsampled.sorted.bam.bai"
 
 # === FINAL OUTPUT ===
 #echo "Done!"
