@@ -33,7 +33,7 @@ THREADS=4
 CHUNK_DIR="fastq_chunks"
 BAM_DIR="bam_chunks"
 MERGED_BAM="aligned_merged.bam"
-mkdir -p "$CHUNK_DIR" "$BAM_DIR"
+mkdir -p "$CHUNK_DIR" "$BAM_DIR". #-p avoids error if the directory already exists
 
 # === STEP 1: SLICE FASTQ FILES INTO CHUNKS ===
 echo "[INFO] Slicing FASTQ files into chunks of $CHUNK_SIZE read pairs..."
