@@ -124,9 +124,9 @@ FILES=($(ls $CHROM_DIR/*.downsampled.sorted.bam))
 HALF=$(( (${#FILES[@]} + 1) / 2 ))
 HEADER_SOURCE="${FILES[0]}"
 
-samtools merge -@ $THREADS -h "$HEADER_SOURCE" "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
-samtools merge -@ $THREADS -h "$HEADER_SOURCE" "$TMP_MERGE2" "${FILES[@]:$HALF}"
-samtools merge -@ $THREADS -h "$HEADER_SOURCE" "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
+samtools merge -f -@ $THREADS -h "$HEADER_SOURCE" "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
+samtools merge -f -@ $THREADS -h "$HEADER_SOURCE" "$TMP_MERGE2" "${FILES[@]:$HALF}"
+samtools merge -f -@ $THREADS -h "$HEADER_SOURCE" "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
 samtools index "$MERGED_BAM"
 
 # === FINAL OUTPUT ===
