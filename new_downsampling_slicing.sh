@@ -34,8 +34,10 @@ CHUNK_DIR="fastq_chunks"
 BAM_DIR="bam_chunks"
 CHROM_DIR="per_chrom_bams"
 MERGED_BAM="SRR23782967_downsampled.sorted.bam"
+OUTPUT_DIR="final_output"
+MERGED_BAM="$OUTPUT_DIR/SRR23782967_downsampled.sorted.bam"
 
-mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR"
+mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR"
 
 # === STEP 1: SLICE FASTQ FILES INTO CHUNKS ===
 #echo "[INFO] Slicing FASTQ files into chunks of $CHUNK_SIZE read pairs..."
@@ -120,9 +122,11 @@ TMP_MERGE2="merge_batch2.bam"
 
 FILES=($(ls $CHROM_DIR/*.downsampled.sorted.bam))
 HALF=$(( (${#FILES[@]} + 1) / 2 ))
-samtools merge -@ $THREADS "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
-samtools merge -@ $THREADS "$TMP_MERGE2" "${FILES[@]:$HALF}"
-samtools merge -@ $THREADS "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
+HEADER_SOURCE="${FILES[0]}"
+
+samtools merge -@ $THREADS -h "$HEADER_SOURCE" "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
+samtools merge -@ $THREADS -h "$HEADER_SOURCE" "$TMP_MERGE2" "${FILES[@]:$HALF}"
+samtools merge -@ $THREADS -h "$HEADER_SOURCE" "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
 samtools index "$MERGED_BAM"
 
 # === FINAL OUTPUT ===
