@@ -121,26 +121,28 @@ ls -ld "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR"
 #    samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
 #done
 
-# === STEP 6: MERGE DOWNSAMPLED PER-CHROM BAMs ===
-echo "[INFO] Merging downsampled per-chromosome BAMs..."
+# === STEP 6: MERGE DOWNSAMPLED PER-CHROM BAMs IN BATCHES ===
+echo "[INFO] Merging downsampled per-chromosome BAMs in batches..."
 
 FILES=($(ls "$CHROM_DIR"/*.downsampled.sorted.bam))
-if [ ${#FILES[@]} -eq 0 ]; then
-    echo "[ERROR] No downsampled sorted BAM files found to merge. Exiting."
-    exit 1
-fi
+TOTAL_FILES=${#FILES[@]}
+TMP_MERGED=()
 
-if [ ! -d "$OUTPUT_DIR" ]; then
-    echo "[ERROR] Output directory $OUTPUT_DIR missing before merge. Exiting."
-    exit 1
-fi
+for (( i=0; i<$TOTAL_FILES; i+=$BATCH_SIZE )); do
+    BATCH_FILES=("${FILES[@]:i:BATCH_SIZE}")
+    BATCH_OUTPUT="$OUTPUT_DIR/batch_merge_$i.bam"
+    
+    echo "[INFO] Merging batch starting at file $i..."
+    samtools merge -f -@ $THREADS "$BATCH_OUTPUT" "${BATCH_FILES[@]}"
+    samtools index "$BATCH_OUTPUT"
+    TMP_MERGED+=("$BATCH_OUTPUT")
+done
 
-echo "[DEBUG] Merging into: $MERGED_BAM"
-samtools merge -f -@ $THREADS "$MERGED_BAM" "${FILES[@]}" || {
-    echo "[ERROR] samtools merge failed."
-    exit 1
-}
+echo "[INFO] Merging all batch merges into final BAM..."
+samtools merge -f -@ $THREADS "$MERGED_BAM" "${TMP_MERGED[@]}"
 samtools index "$MERGED_BAM"
 
 # === FINAL OUTPUT ===
-echo "[INFO] Pipeline complete. Output BAM: $MERGED_BAM"
+echo "[INFO] Pipeline complete. Output files:"
+echo " - $MERGED_BAM"
+echo " - ${MERGED_BAM}.bai"
