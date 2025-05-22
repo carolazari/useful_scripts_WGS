@@ -77,41 +77,41 @@ mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR"
 #done
 
 # === STEP 4: CALCULATE COVERAGE AND DOWNSAMPLE ===
-echo "[INFO] Calculating coverage and sampling fraction..."
-LAST_SORTED_BAM=$(ls -v "$BAM_DIR"/chunk_*.sorted.bam | tail -n 1)
+#echo "[INFO] Calculating coverage and sampling fraction..."
+#LAST_SORTED_BAM=$(ls -v "$BAM_DIR"/chunk_*.sorted.bam | tail -n 1)
 
-if [ ! -f "$LAST_SORTED_BAM" ]; then
-    echo "[ERROR] No BAM files found for coverage calculation."
-    exit 1
-fi
+#if [ ! -f "$LAST_SORTED_BAM" ]; then
+#    echo "[ERROR] No BAM files found for coverage calculation."
+#    exit 1
+#fi
 
-TOTAL_READS=$(samtools view -c "$LAST_SORTED_BAM")
-CURRENT_DEPTH=$(echo "$TOTAL_READS * $READ_LENGTH / $GENOME_SIZE" | bc -l)
-FRACTION=$(echo "$TARGET_DEPTH / $CURRENT_DEPTH" | bc -l)
-DECIMAL=$(printf "%.3f" "$FRACTION" | cut -d'.' -f2)
+#TOTAL_READS=$(samtools view -c "$LAST_SORTED_BAM")
+#CURRENT_DEPTH=$(echo "$TOTAL_READS * $READ_LENGTH / $GENOME_SIZE" | bc -l)
+#FRACTION=$(echo "$TARGET_DEPTH / $CURRENT_DEPTH" | bc -l)
+#DECIMAL=$(printf "%.3f" "$FRACTION" | cut -d'.' -f2)
 
-echo "  Total reads: $TOTAL_READS"
-echo "  Estimated depth: $CURRENT_DEPTH"
-echo "  Target depth: $TARGET_DEPTH"
-echo "  Downsampling fraction: $FRACTION"
+#echo "  Total reads: $TOTAL_READS"
+#echo "  Estimated depth: $CURRENT_DEPTH"
+#echo "  Target depth: $TARGET_DEPTH"
+#echo "  Downsampling fraction: $FRACTION"
 
 # === STEP 5: PER-CHROMOSOME PROCESSING ===
-echo "[INFO] Getting chromosome list..."
-readarray -t CHROMOSOMES < <(samtools idxstats "$LAST_SORTED_BAM" | cut -f1 | grep -v '\*')
-declare -p CHROMOSOMES
+#echo "[INFO] Getting chromosome list..."
+#readarray -t CHROMOSOMES < <(samtools idxstats "$LAST_SORTED_BAM" | cut -f1 | grep -v '\*')
+#declare -p CHROMOSOMES
 
-if [ ${#CHROMOSOMES[@]} -eq 0 ]; then
-    echo "[ERROR] No chromosomes found. BAM might not be sorted or indexed correctly."
-    exit 1
-fi
+#if [ ${#CHROMOSOMES[@]} -eq 0 ]; then
+#    echo "[ERROR] No chromosomes found. BAM might not be sorted or indexed correctly."
+#    exit 1
+#fi
 
-for c in "${CHROMOSOMES[@]}"; do
-    echo "Processing $c"
-    samtools view -b "$LAST_SORTED_BAM" "$c" > "$CHROM_DIR/${c}.aligned.bam"
-    samtools view -@ 4 -f 3 -s 42."$DECIMAL" -b "$CHROM_DIR/${c}.aligned.bam" > "$CHROM_DIR/${c}.downsampled.bam"
-    samtools sort -@ 4 -o "$CHROM_DIR/${c}.downsampled.sorted.bam" "$CHROM_DIR/${c}.downsampled.bam"
-    samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
-done
+#for c in "${CHROMOSOMES[@]}"; do
+#    echo "Processing $c"
+#    samtools view -b "$LAST_SORTED_BAM" "$c" > "$CHROM_DIR/${c}.aligned.bam"
+#    samtools view -@ 4 -f 3 -s 42."$DECIMAL" -b "$CHROM_DIR/${c}.aligned.bam" > "$CHROM_DIR/${c}.downsampled.bam"
+#    samtools sort -@ 4 -o "$CHROM_DIR/${c}.downsampled.sorted.bam" "$CHROM_DIR/${c}.downsampled.bam"
+#    samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
+#done
 
 # === STEP 6: MERGE DOWNSAMPLED PER-CHROM BAMs IN BATCHES ===
 echo "[INFO] Merging downsampled per-chromosome BAMs in batches..."
@@ -120,9 +120,9 @@ TMP_MERGE2="merge_batch2.bam"
 
 FILES=($(ls $CHROM_DIR/*.downsampled.sorted.bam))
 HALF=$(( (${#FILES[@]} + 1) / 2 ))
-samtools merge -@ $THREADS -m 1G "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
-samtools merge -@ $THREADS -m 1G "$TMP_MERGE2" "${FILES[@]:$HALF}"
-samtools merge -@ $THREADS -m 1G "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
+samtools merge -@ $THREADS "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
+samtools merge -@ $THREADS "$TMP_MERGE2" "${FILES[@]:$HALF}"
+samtools merge -@ $THREADS "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
 samtools index "$MERGED_BAM"
 
 # === FINAL OUTPUT ===
