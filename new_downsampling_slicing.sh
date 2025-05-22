@@ -78,7 +78,14 @@ mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR"
 
 # === STEP 4: CALCULATE COVERAGE AND DOWNSAMPLE ===
 echo "[INFO] Calculating coverage and sampling fraction..."
-TOTAL_READS=$(samtools view -c "$OUT_BAM")
+LAST_SORTED_BAM=$(ls -v "$BAM_DIR"/chunk_*.sorted.bam | tail -n 1)
+
+if [ ! -f "$LAST_SORTED_BAM" ]; then
+    echo "[ERROR] No BAM files found for coverage calculation."
+    exit 1
+fi
+
+TOTAL_READS=$(samtools view -c "$LAST_SORTED_BAM")
 CURRENT_DEPTH=$(echo "$TOTAL_READS * $READ_LENGTH / $GENOME_SIZE" | bc -l)
 FRACTION=$(echo "$TARGET_DEPTH / $CURRENT_DEPTH" | bc -l)
 DECIMAL=$(printf "%.3f" "$FRACTION" | cut -d'.' -f2)
@@ -90,7 +97,7 @@ echo "  Downsampling fraction: $FRACTION"
 
 # === STEP 5: PER-CHROMOSOME PROCESSING ===
 echo "[INFO] Getting chromosome list..."
-readarray -t CHROMOSOMES < <(samtools idxstats "$OUT_BAM" | cut -f1 | grep -v '\*')
+readarray -t CHROMOSOMES < <(samtools idxstats "$LAST_SORTED_BAM" | cut -f1 | grep -v '\*')
 declare -p CHROMOSOMES
 
 if [ ${#CHROMOSOMES[@]} -eq 0 ]; then
@@ -100,7 +107,7 @@ fi
 
 for c in "${CHROMOSOMES[@]}"; do
     echo "Processing $c"
-    samtools view -b "$OUT_BAM" "$c" > "$CHROM_DIR/${c}.aligned.bam"
+    samtools view -b "$LAST_SORTED_BAM" "$c" > "$CHROM_DIR/${c}.aligned.bam"
     samtools view -@ 4 -f 3 -s 42."$DECIMAL" -b "$CHROM_DIR/${c}.aligned.bam" > "$CHROM_DIR/${c}.downsampled.bam"
     samtools sort -@ 4 -o "$CHROM_DIR/${c}.downsampled.sorted.bam" "$CHROM_DIR/${c}.downsampled.bam"
     samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
