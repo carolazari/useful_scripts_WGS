@@ -48,33 +48,33 @@ mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR"
 #samtools faidx "$REF"
 
 # === STEP 3: ALIGN, SORT, VERIFY, AND INDEX EACH CHUNK ===
-echo "[INFO] Aligning FASTQ chunks..."
-for i in "$CHUNK_DIR"/R1_chunk_*.fastq; do
-    base=$(basename "$i" | sed 's/R1_chunk_//;s/.fastq//')
-    R1_CHUNK="$CHUNK_DIR/R1_chunk_${base}.fastq"
-    R2_CHUNK="$CHUNK_DIR/R2_chunk_${base}.fastq"
-    OUT_BAM="$BAM_DIR/chunk_${base}.bam"
-    SORTED_BAM="$BAM_DIR/chunk_${base}.sorted.bam"
+#echo "[INFO] Aligning FASTQ chunks..."
+#for i in "$CHUNK_DIR"/R1_chunk_*.fastq; do
+#    base=$(basename "$i" | sed 's/R1_chunk_//;s/.fastq//')
+#    R1_CHUNK="$CHUNK_DIR/R1_chunk_${base}.fastq"
+#    R2_CHUNK="$CHUNK_DIR/R2_chunk_${base}.fastq"
+#    OUT_BAM="$BAM_DIR/chunk_${base}.bam"
+#    SORTED_BAM="$BAM_DIR/chunk_${base}.sorted.bam"
 
-    echo "  Aligning chunk $base..."
-    bwa mem -t $THREADS "$REF" "$R1_CHUNK" "$R2_CHUNK" | samtools view -b -o "$OUT_BAM" -
+#    echo "  Aligning chunk $base..."
+#    bwa mem -t $THREADS "$REF" "$R1_CHUNK" "$R2_CHUNK" | samtools view -b -o "$OUT_BAM" -
 
-    echo "[INFO] Verifying BAM integrity..."
-    if ! samtools quickcheck -v "$OUT_BAM"; then
-        echo "[WARNING] BAM invalid, re-running alignment..."
-        rm -f "$OUT_BAM"
-        bwa mem -t $THREADS "$REF" "$R1_CHUNK" "$R2_CHUNK" | samtools view -b -o "$OUT_BAM" -
-        if ! samtools quickcheck -v "$OUT_BAM"; then
-            echo "[ERROR] BAM still invalid. Exiting."
-            exit 1
-        fi
-    fi
-    echo "[INFO] $OUT_BAM is valid."
+#    echo "[INFO] Verifying BAM integrity..."
+#    if ! samtools quickcheck -v "$OUT_BAM"; then
+#        echo "[WARNING] BAM invalid, re-running alignment..."
+#        rm -f "$OUT_BAM"
+#        bwa mem -t $THREADS "$REF" "$R1_CHUNK" "$R2_CHUNK" | samtools view -b -o "$OUT_BAM" -
+#        if ! samtools quickcheck -v "$OUT_BAM"; then
+#            echo "[ERROR] BAM still invalid. Exiting."
+#            exit 1
+#        fi
+#    fi
+#    echo "[INFO] $OUT_BAM is valid."
 
-    echo "  Sorting and indexing chunk $base..."
-    samtools sort -@ $THREADS -o "$SORTED_BAM" "$OUT_BAM"
-    samtools index "$SORTED_BAM"
-done
+#    echo "  Sorting and indexing chunk $base..."
+#    samtools sort -@ $THREADS -o "$SORTED_BAM" "$OUT_BAM"
+#    samtools index "$SORTED_BAM"
+#done
 
 # === STEP 4: CALCULATE COVERAGE AND DOWNSAMPLE ===
 echo "[INFO] Calculating coverage and sampling fraction..."
