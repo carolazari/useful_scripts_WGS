@@ -3,7 +3,7 @@
 #SBATCH --job-name=align_slice_downsample
 #SBATCH --output=align_slice_downsample.log
 #SBATCH --error=align_slice_downsample-%j.err
-#SBATCH --time=160:00:00
+#SBATCH --time=170:00:00
 #SBATCH -c 10
 #SBATCH --mem=16G
 #SBATCH --mail-type=ALL
