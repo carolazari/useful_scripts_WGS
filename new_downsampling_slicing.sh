@@ -5,7 +5,7 @@
 #SBATCH --error=align_slice_downsample-%j.err
 #SBATCH --time=170:00:00
 #SBATCH -c 10
-#SBATCH --mem=16G
+#SBATCH --mem=48G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=clazari@ucsc.edu
 
@@ -77,7 +77,6 @@ for i in "$CHUNK_DIR"/R1_chunk_*.fastq; do
 done
 
 # === STEP 4: CALCULATE COVERAGE AND DOWNSAMPLE ===
-OUT_BAM="$BAM_DIR/chunk_01.sorted.bam"
 echo "[INFO] Calculating coverage and sampling fraction..."
 TOTAL_READS=$(samtools view -c "$OUT_BAM")
 CURRENT_DEPTH=$(echo "$TOTAL_READS * $READ_LENGTH / $GENOME_SIZE" | bc -l)
@@ -89,7 +88,7 @@ echo "  Estimated depth: $CURRENT_DEPTH"
 echo "  Target depth: $TARGET_DEPTH"
 echo "  Downsampling fraction: $FRACTION"
 
-# === STEP 5: GET CHROMOSOME LIST ===
+# === STEP 5: PER-CHROMOSOME PROCESSING ===
 echo "[INFO] Getting chromosome list..."
 readarray -t CHROMOSOMES < <(samtools idxstats "$OUT_BAM" | cut -f1 | grep -v '\*')
 declare -p CHROMOSOMES
@@ -99,18 +98,24 @@ if [ ${#CHROMOSOMES[@]} -eq 0 ]; then
     exit 1
 fi
 
-# === STEP 6: PER-CHROMOSOME DOWNSAMPLING ===
 for c in "${CHROMOSOMES[@]}"; do
     echo "Processing $c"
     samtools view -b "$OUT_BAM" "$c" > "$CHROM_DIR/${c}.aligned.bam"
-    samtools view -@ $THREADS -f 3 -s 42."$DECIMAL" -b "$CHROM_DIR/${c}.aligned.bam" > "$CHROM_DIR/${c}.downsampled.bam"
-    samtools sort -@ $THREADS -o "$CHROM_DIR/${c}.downsampled.sorted.bam" "$CHROM_DIR/${c}.downsampled.bam"
+    samtools view -@ 4 -f 3 -s 42."$DECIMAL" -b "$CHROM_DIR/${c}.aligned.bam" > "$CHROM_DIR/${c}.downsampled.bam"
+    samtools sort -@ 4 -o "$CHROM_DIR/${c}.downsampled.sorted.bam" "$CHROM_DIR/${c}.downsampled.bam"
     samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
 done
 
-# === STEP 7: MERGE DOWNSAMPLED PER-CHROM BAMs ===
-echo "[INFO] Merging downsampled per-chromosome BAMs..."
-samtools merge -@ $THREADS "$MERGED_BAM" "$CHROM_DIR"/*.downsampled.sorted.bam
+# === STEP 6: MERGE DOWNSAMPLED PER-CHROM BAMs IN BATCHES ===
+echo "[INFO] Merging downsampled per-chromosome BAMs in batches..."
+TMP_MERGE1="merge_batch1.bam"
+TMP_MERGE2="merge_batch2.bam"
+
+FILES=($(ls $CHROM_DIR/*.downsampled.sorted.bam))
+HALF=$(( (${#FILES[@]} + 1) / 2 ))
+samtools merge -@ $THREADS -m 1G "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
+samtools merge -@ $THREADS -m 1G "$TMP_MERGE2" "${FILES[@]:$HALF}"
+samtools merge -@ $THREADS -m 1G "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
 samtools index "$MERGED_BAM"
 
 # === FINAL OUTPUT ===
