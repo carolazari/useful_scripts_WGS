@@ -34,10 +34,16 @@ CHUNK_DIR="fastq_chunks"
 BAM_DIR="bam_chunks"
 CHROM_DIR="per_chrom_bams"
 MERGED_BAM="SRR23782967_downsampled.sorted.bam"
-OUTPUT_DIR="final_output"
+OUTPUT_DIR="$(pwd)/final_output"
 MERGED_BAM="$OUTPUT_DIR/SRR23782967_downsampled.sorted.bam"
 
-mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR"
+mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR" || {
+    echo "[ERROR] Failed to create one or more output directories. Exiting."
+    exit 1
+}
+
+echo "[DEBUG] Created directories:"
+ls -ld "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR"
 
 # === STEP 1: SLICE FASTQ FILES INTO CHUNKS ===
 #echo "[INFO] Slicing FASTQ files into chunks of $CHUNK_SIZE read pairs..."
@@ -115,20 +121,26 @@ mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR"
 #    samtools index "$CHROM_DIR/${c}.downsampled.sorted.bam"
 #done
 
-# === STEP 6: MERGE DOWNSAMPLED PER-CHROM BAMs IN BATCHES ===
-echo "[INFO] Merging downsampled per-chromosome BAMs in batches..."
-TMP_MERGE1="merge_batch1.bam"
-TMP_MERGE2="merge_batch2.bam"
+# === STEP 6: MERGE DOWNSAMPLED PER-CHROM BAMs ===
+echo "[INFO] Merging downsampled per-chromosome BAMs..."
 
-FILES=($(ls $CHROM_DIR/*.downsampled.sorted.bam))
-HALF=$(( (${#FILES[@]} + 1) / 2 ))
+FILES=($(ls "$CHROM_DIR"/*.downsampled.sorted.bam))
+if [ ${#FILES[@]} -eq 0 ]; then
+    echo "[ERROR] No downsampled sorted BAM files found to merge. Exiting."
+    exit 1
+fi
 
-samtools merge -f -@ $THREADS "$TMP_MERGE1" "${FILES[@]:0:$HALF}"
-samtools merge -f -@ $THREADS "$TMP_MERGE2" "${FILES[@]:$HALF}"
-samtools merge -f -@ $THREADS "$MERGED_BAM" "$TMP_MERGE1" "$TMP_MERGE2"
+if [ ! -d "$OUTPUT_DIR" ]; then
+    echo "[ERROR] Output directory $OUTPUT_DIR missing before merge. Exiting."
+    exit 1
+fi
+
+echo "[DEBUG] Merging into: $MERGED_BAM"
+samtools merge -f -@ $THREADS "$MERGED_BAM" "${FILES[@]}" || {
+    echo "[ERROR] samtools merge failed."
+    exit 1
+}
 samtools index "$MERGED_BAM"
 
 # === FINAL OUTPUT ===
-echo "[INFO] Pipeline complete. Output files:"
-echo " - $MERGED_BAM"
-echo " - ${MERGED_BAM}.bai"
+echo "[INFO] Pipeline complete. Output BAM: $MERGED_BAM"
