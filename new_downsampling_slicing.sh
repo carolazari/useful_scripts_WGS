@@ -128,19 +128,36 @@ FILES=($(ls "$CHROM_DIR"/*.downsampled.sorted.bam))
 TOTAL_FILES=${#FILES[@]}
 TMP_MERGED=()
 
-for (( i=0; i<$TOTAL_FILES; i+=$BATCH_SIZE )); do
+if [ $TOTAL_FILES -eq 0 ]; then
+    echo "[ERROR] No per-chromosome BAM files found to merge."
+    exit 1
+fi
+
+for (( i=0; i<$TOTAL_FILES; i+=BATCH_SIZE )); do
     BATCH_FILES=("${FILES[@]:i:BATCH_SIZE}")
+    if [ ${#BATCH_FILES[@]} -eq 0 ]; then
+        echo "[WARNING] Empty batch at index $i, skipping."
+        continue
+    fi
     BATCH_OUTPUT="$OUTPUT_DIR/batch_merge_$i.bam"
-    
-    echo "[INFO] Merging batch starting at file $i..."
+    echo "[INFO] Merging batch starting at file $i (count: ${#BATCH_FILES[@]})..."
     samtools merge -f -@ $THREADS "$BATCH_OUTPUT" "${BATCH_FILES[@]}"
     samtools index "$BATCH_OUTPUT"
     TMP_MERGED+=("$BATCH_OUTPUT")
 done
 
-echo "[INFO] Merging all batch merges into final BAM..."
-samtools merge -f -@ $THREADS "$MERGED_BAM" "${TMP_MERGED[@]}"
-samtools index "$MERGED_BAM"
+if [ ${#TMP_MERGED[@]} -eq 0 ]; then
+    echo "[ERROR] No batch merged BAM files created. Exiting."
+    exit 1
+elif [ ${#TMP_MERGED[@]} -eq 1 ]; then
+    echo "[INFO] Only one batch merge file, copying to final output..."
+    cp "${TMP_MERGED[0]}" "$MERGED_BAM"
+    samtools index "$MERGED_BAM"
+else
+    echo "[INFO] Merging all batch merges into final BAM..."
+    samtools merge -f -@ $THREADS "$MERGED_BAM" "${TMP_MERGED[@]}"
+    samtools index "$MERGED_BAM"
+fi
 
 # === FINAL OUTPUT ===
 echo "[INFO] Pipeline complete. Output files:"
