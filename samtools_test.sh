@@ -30,7 +30,7 @@ SEED=100
 THREADS=8
 
 # === WORKING DIRS ===
-CHUNK_DIR="fastq_chunks_2"
+CHUNK_DIR="fastq_chunks"
 BAM_DIR="bam_chunks_2"
 CHROM_DIR="per_chrom_bams_2"
 MERGED_BAM="SRR23782967_downsampled.sorted.bam"
