@@ -122,6 +122,9 @@ for c in "${CHROMOSOMES[@]}"; do
 done
 
 # === STEP 6: merge all per-chromosome BAM files into one BAM in a single step ===
+
+# Increase open file limit to avoid "Too many open files" error
+ulimit -n 4096
 echo "[INFO] Merging all downsampled per-chromosome BAMs into one..."
 
 # Collect all BAM files
