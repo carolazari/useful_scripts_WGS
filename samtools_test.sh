@@ -30,11 +30,11 @@ SEED=100
 THREADS=8
 
 # === WORKING DIRS ===
-CHUNK_DIR="fastq_chunks"
-BAM_DIR="bam_chunks"
-CHROM_DIR="per_chrom_bams"
+CHUNK_DIR="fastq_chunks_2"
+BAM_DIR="bam_chunks_2"
+CHROM_DIR="per_chrom_bams_2"
 MERGED_BAM="SRR23782967_downsampled.sorted.bam"
-OUTPUT_DIR="$(pwd)/final_output"
+OUTPUT_DIR="$(pwd)/final_output_2"
 MERGED_BAM="$OUTPUT_DIR/SRR23782967_downsampled.sorted.bam"
 
 mkdir -p "$CHUNK_DIR" "$BAM_DIR" "$CHROM_DIR" "$OUTPUT_DIR" || {
