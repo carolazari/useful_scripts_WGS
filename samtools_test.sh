@@ -28,6 +28,7 @@ TARGET_DEPTH=8
 CHUNK_SIZE=10000
 SEED=100
 THREADS=8
+BATCH_SIZE=50  # Adjust based on your ulimit
 
 # === WORKING DIRS ===
 CHUNK_DIR="fastq_chunks"
@@ -125,22 +126,32 @@ done
 
 # Increase open file limit to avoid "Too many open files" error
 ulimit -n 4096
-echo "[INFO] Merging all downsampled per-chromosome BAMs into one..."
 
-# Collect all BAM files
 FILES=("$CHROM_DIR"/*.downsampled.sorted.bam)
 TOTAL_FILES=${#FILES[@]}
+TMP_MERGED=()
 
 if [ $TOTAL_FILES -eq 0 ]; then
-    echo "[ERROR] No BAM files found in $CHROM_DIR."
+    echo "[ERROR] No per-chromosome BAM files found to merge."
     exit 1
 fi
 
-# Merge all BAMs into a single file
-samtools merge -f -@ "$THREADS" "$MERGED_BAM" "${FILES[@]}"
+echo "[INFO] Merging in batches of $BATCH_SIZE..."
+
+for (( i=0; i<$TOTAL_FILES; i+=BATCH_SIZE )); do
+    BATCH_FILES=("${FILES[@]:i:BATCH_SIZE}")
+    BATCH_OUTPUT="$OUTPUT_DIR/batch_$i.bam"
+    
+    echo "[INFO] Merging batch $((i/BATCH_SIZE + 1))..."
+    samtools merge -f -@ $THREADS "$BATCH_OUTPUT" "${BATCH_FILES[@]}"
+    samtools index "$BATCH_OUTPUT"
+    TMP_MERGED+=("$BATCH_OUTPUT")
+done
+
+echo "[INFO] Merging batch outputs into final BAM..."
+samtools merge -f -@ $THREADS "$MERGED_BAM" "${TMP_MERGED[@]}"
 samtools index "$MERGED_BAM"
 
-# === FINAL OUTPUT ===
-echo "[INFO] Merge complete. Output files:"
+echo "[INFO] Done. Final output:"
 echo " - $MERGED_BAM"
 echo " - ${MERGED_BAM}.bai"
