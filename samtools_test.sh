@@ -152,6 +152,6 @@ echo "[INFO] Merging batch outputs into final BAM..."
 samtools merge -f -@ $THREADS "$MERGED_BAM" "${TMP_MERGED[@]}"
 samtools index "$MERGED_BAM"
 
-echo "[INFO] Done. Final output:"
+echo "[INFO] Done. Final output downsampled:"
 echo " - $MERGED_BAM"
 echo " - ${MERGED_BAM}.bai"
