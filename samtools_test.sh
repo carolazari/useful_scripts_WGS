@@ -25,7 +25,7 @@ READ_LENGTH=150
 TARGET_DEPTH=2
 
 # === CONFIG ===
-CHUNK_SIZE=10000
+CHUNK_SIZE=80000000 #this is 2N of my reads paired on the other samples
 SEED=100
 THREADS=8
 BATCH_SIZE=50  # Adjust based on your ulimit
