@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=mapq_summary
+#SBATCH --job-name=mapq_summary_caxnz
 #SBATCH --output=mapq_summary_%j.out
 #SBATCH --error=mapq_summary_%j.err
 #SBATCH --ntasks=1
@@ -15,8 +15,9 @@ module load bio/bedtools
 
 # Input and output setup
 GENOME_FA=/home/clazari/Projects/Omykiss/mega-non-model-wgs-snakeflow/resources/genome.fasta               # <-- path to your reference genome
-BAM_DIR=/share/swfsc/clazari/Omykiss/results_mega-non-model_CAxArg_March_2025/bqsr-round-0/overlap_clipped/                # <-- path to your .bam files
-OUT_DIR=share/swfsc/clazari/Omykiss/results_mega-non-model_CAxArg_March_2025/bqsr-round-0/overlap_clipped/mapq_chrom7        # <-- output directory
+#BAM_DIR=/share/swfsc/clazari/Omykiss/results_mega-non-model_CAxArg_March_2025/bqsr-round-0/overlap_clipped/ 
+BAM_DIR=/share/swfsc/clazari/Omykiss/results_mega-non-model_CAxNZ_March25/bqsr-round-0/overlap_clipped/               # <-- path to your .bam files
+OUT_DIR=mapq_genome-wide        # <-- output directory
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUT_DIR"
