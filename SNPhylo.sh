@@ -17,6 +17,7 @@ INPUT=/share/swfsc/clazari/Omykiss/results_mega-non-model_CAxArg_March_2025/bqsr
 OUT_PREFIX=my_phylo_tree
 
 # -------- ENV SETUP --------
+conda init
 conda activate snphylo_env #this has muscle and python installed
 module load bio/bcftools
 module load bio/samtools
