@@ -1,9 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=blast_regions
+#SBATCH --output=blast_regions_%j.out
+#SBATCH --error=sblast_regions_%j.err
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=24G
-#SBATCH --time=02:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=blast_regions_%j.log
+#SBATCH --partition=medmem
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=clazari@ucsc.edu
 
 # --------------------------------------
 # SLURM job: Run BLAST for 3 genomic regions
@@ -14,7 +19,7 @@
 module load bio/blast
 
 # Input genome FASTA file
-GENOME_FA="genome.fa"
+GENOME_FA="/home/clazari/Projects/Omykiss/mega-non-model-wgs-snakeflow/resources/genome.fasta"
 DB_NAME="my_genome_db"
 
 # Check if BLAST database exists, if not, create it
